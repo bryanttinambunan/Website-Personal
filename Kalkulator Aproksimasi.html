@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Error Approximation Calculator — Premium (Final)</title>
+
+<!-- CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<!-- Font -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --glass:#ffffff88;
+    --card: rgba(255,255,255,0.55);
+    --text:#0d1720;
+    --muted:#6b7280;
+    --accent:#3ad59f;
+    --primary: #6a80ff;
+  }
+  body.dark{
+    --glass: rgba(255,255,255,0.04);
+    --card: rgba(18,20,24,0.65);
+    --text:#e8eefc;
+    --muted:#9aa6bf;
+    --accent:#48ffbe;
+    --primary:#8fa0ff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:"Poppins",sans-serif;background:linear-gradient(180deg,#f8fbff,#eef5ff);color:var(--text);overflow-x:hidden}
+  body.dark{background:linear-gradient(180deg,#0b0f14,#0e1218)}
+
+  /* Aurora background: multiple animated radial layers */
+  .aurora {
+    position:fixed;inset:0;pointer-events:none;z-index:0;mix-blend-mode:screen;
+    overflow:hidden;
+  }
+  .aurora .layer{
+    position:absolute;border-radius:50%;
+    filter:blur(120px);
+    opacity:0.85; transform: translate3d(0,0,0);
+    animation: drift 14s linear infinite;
+  }
+  .aurora .layer.l1{ width:700px;height:700px;left:-150px;top:-120px;background:radial-gradient(circle,#cfe1ff,#ffffff00 60%); animation-duration:18s; }
+  .aurora .layer.l2{ width:900px;height:900px;right:-200px;top:-200px;background:radial-gradient(circle,#dfe7ff80,#ffffff00 60%); animation-duration:22s; }
+  .aurora .layer.l3{ width:600px;height:600px;left:20%;bottom:-180px;background:radial-gradient(circle,#dfffe880,#ffffff00 60%); animation-duration:20s; }
+  @keyframes drift{
+    0%{transform:translateY(0) translateX(0) rotate(0deg)}
+    50%{transform:translateY(-60px) translateX(40px) rotate(8deg)}
+    100%{transform:translateY(0) translateX(0) rotate(0deg)}
+  }
+
+  /* subtle grain overlay to make glass look premium */
+  .grain{
+    position:fixed;inset:0;z-index:1;pointer-events:none;background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><filter id="g"><feTurbulence baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(%23g)" opacity="0.02"/></svg>');
+    mix-blend-mode:overlay;opacity:0.6;
+  }
+
+  /* Loading splash */
+  #splash {
+    position:fixed;inset:0;background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:9999;
+    backdrop-filter: blur(6px);
+  }
+  .splash-card{width:240px;height:240px;border-radius:20px;background:var(--card);display:flex;align-items:center;justify-content:center;flex-direction:column;box-shadow:0 16px 60px rgba(10,20,40,0.12)}
+  .logo{width:96px;height:96px;border-radius:18px;background:linear-gradient(90deg,#ffffff22,#ffffff11);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:30px}
+  .splash-title{margin-top:12px;color:var(--muted);font-weight:600}
+  .splash-bar{width:180px;height:8px;margin-top:18px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden}
+  .splash-progress{height:100%;width:0;background:linear-gradient(90deg,#6a80ff,#6ea3ff);border-radius:999px;transition:width .9s cubic-bezier(.2,.9,.2,1)}
+
+  /* Landing / Hero */
+  .hero{
+    position:relative;z-index:5;padding:60px 20px 40px;display:flex;align-items:center;justify-content:center;flex-direction:column;
+    text-align:center;
+  }
+  .hero h1{font-size:32px;margin:8px 0;font-weight:700;letter-spacing:0.2px}
+  .hero p{color:var(--muted);max-width:760px;margin:10px 0 18px;font-size:15px}
+  .hero .start-btn{padding:12px 22px;border-radius:12px;border:none;background:linear-gradient(90deg,#6a80ff,#6ea3ff);color:white;font-weight:700;cursor:pointer;box-shadow:0 16px 40px rgba(90,111,240,0.12)}
+  .hero .chev{margin-top:10px;color:var(--muted);font-size:13px}
+
+  /* Main app container */
+  .app {
+    max-width:1100px;margin:22px auto;padding:18px;display:grid;grid-template-columns:1fr 420px;gap:22px;z-index:5;
+  }
+  @media(max-width:980px){.app{grid-template-columns:1fr;padding:12px}}
+  .card{
+    background:var(--card);border-radius:14px;padding:18px;box-shadow:0 12px 40px rgba(10,20,40,0.08);backdrop-filter: blur(8px);
+  }
+
+  /* Nav */
+  .nav{max-width:1100px;margin:18px auto;padding:12px 18px;border-radius:14px;background:var(--card);display:flex;align-items:center;justify-content:space-between;z-index:6}
+  .brand{display:flex;gap:12px;align-items:center}
+  .brand .mark{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,#ffffff22,#ffffff11);display:flex;align-items:center;justify-content:center;font-weight:700}
+  .nav .right{display:flex;gap:10px;align-items:center}
+  .circle-toggle{width:38px;height:38px;border-radius:50%;border:none;background:linear-gradient(90deg,#6a80ff,#6ea3ff);color:white;cursor:pointer;box-shadow:0 10px 30px rgba(90,111,240,0.16)}
+
+  /* Form area */
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
+  input{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:var(--text);font-size:15px}
+  input:focus{outline:none;box-shadow:0 12px 30px rgba(0,0,0,0.06);transform:translateY(-4px)}
+
+  .actions{display:flex;gap:12px;margin-top:12px}
+  .btn{flex:1;padding:12px;border-radius:12px;border:none;background:linear-gradient(90deg,#6a80ff,#7b98ff);color:white;font-weight:700;cursor:pointer}
+  .btn.alt{background:transparent;color:var(--text);border:1px solid rgba(0,0,0,0.06)}
+
+  .results{display:flex;gap:12px;margin-top:18px}
+  .result{flex:1;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));text-align:center}
+  .result h4{margin:0;color:var(--muted);font-size:13px}
+  .result p{margin:8px 0 0;font-weight:700;font-size:18px}
+
+  .chart-wrap{margin-top:18px;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));}
+
+  /* history */
+  .history{max-height:360px;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:8px}
+  .hist-item{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))}
+  .hist-actions{display:flex;gap:8px}
+
+  /* landing -> app transition helper */
+  .hidden{display:none}
+
+  /* footer small */
+  .tiny{font-size:12px;color:var(--muted)}
+
+  /* modal fullscreen chart */
+  #chartModal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:9998}
+  #chartModal .modalCard{width:90%;max-width:900px;padding:18px;border-radius:12px;background:var(--card)}
+
+  /* responsive */
+  @media(max-width:640px){
+    .hero h1{font-size:24px}
+    .app{grid-template-columns:1fr}
+    .nav{margin:10px 12px}
+  }
+</style>
+</head>
+<body>
+
+<!-- Aurora BG -->
+<div class="aurora" aria-hidden="true">
+  <div class="layer l1"></div>
+  <div class="layer l2"></div>
+  <div class="layer l3"></div>
+</div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- Splash loading -->
+<div id="splash" role="status" aria-live="polite">
+  <div class="splash-card">
+    <div class="logo">EA</div>
+    <div class="splash-title">Loading App — Error Approximation</div>
+    <div class="splash-bar"><div class="splash-progress" id="splashProgress"></div></div>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav hidden" id="mainNav">
+  <div class="brand">
+    <div class="mark">EA</div>
+    <div>
+      <div style="font-weight:700">Error Approximation Calculator</div>
+      <div class="tiny">Aproksimasi • Error Absolut & Relatif</div>
+    </div>
+  </div>
+  <div class="right">
+    <a href="/mnt/data/RANCANGAN IDE KEL 4 METNUM.pdf" class="tiny" download>Download Rancangan Ide</a>
+    <button class="circle-toggle" id="themeToggle" title="Toggle theme">☀️</button>
+  </div>
+</div>
+
+<!-- HERO / LANDING -->
+<section class="hero" id="landing">
+  <h1>Visual & Interaktif — Kalkulator Error</h1>
+  <p>Praktikkan konsep error absolut dan error relatif dengan aplikasi web sederhana. Visualisasi, riwayat, dan export laporan tersedia.</p>
+  <button class="start-btn" id="startBtn">Mulai Aplikasi</button>
+  <div class="chev">Scroll untuk detail — atau klik Mulai</div>
+</section>
+
+<!-- MAIN APP -->
+<main class="app hidden" id="appMain" role="main">
+
+  <!-- LEFT: main calc -->
+  <div class="card" id="leftCard" data-qa="main-card">
+    <h2>Perhitungan & Visualisasi</h2>
+
+    <div class="grid-2">
+      <div>
+        <label for="trueVal">Nilai Sebenarnya (x)</label>
+        <input id="trueVal" type="number" step="any" placeholder="Contoh: 3.14159" />
+      </div>
+      <div>
+        <label for="approxVal">Nilai Aproksimasi (x̂)</label>
+        <input id="approxVal" type="number" step="any" placeholder="Contoh: 3.14" />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="calcBtn">Hitung</button>
+      <button class="btn alt" id="clearBtn">Bersihkan</button>
+    </div>
+
+    <div class="results" aria-live="polite">
+      <div class="result">
+        <h4>Error Absolut</h4>
+        <p id="absOut">-</p>
+      </div>
+      <div class="result">
+        <h4>Error Relatif</h4>
+        <p id="relOut">-</p>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="errorChart" height="120" aria-label="Grafik Error"></canvas>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:14px">
+      <button class="btn" id="downloadTxt">Download Hasil (TXT)</button>
+      <button class="btn alt" id="exportPdf">Export Laporan (PDF)</button>
+      <button class="btn alt" id="fullChartBtn">Fullscreen Grafik</button>
+    </div>
+
+    <div style="margin-top:12px" class="tiny">Jika nilai sebenarnya = 0, error relatif dinyatakan 0 untuk menghindari pembagian nol.</div>
+  </div>
+
+  <!-- RIGHT: history & controls -->
+  <aside>
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:700">Riwayat Perhitungan</div>
+          <div class="tiny">Disimpan di perangkat (localStorage)</div>
+        </div>
+        <div>
+          <button class="btn alt" id="clearHistory">Hapus Semua</button>
+        </div>
+      </div>
+      <div class="history" id="historyList" aria-live="polite">
+        <div class="tiny">Belum ada riwayat. Lakukan perhitungan untuk menyimpan hasil.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700">Kontrol Lanjutan</div>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+        <button class="btn alt" id="downloadAll">Download Semua (TXT)</button>
+        <button class="btn alt" id="restoreLast">Ambil Terakhir</button>
+      </div>
+      <div style="margin-top:10px" class="tiny">Laporan PDF dibuat dari tampilan kartu utama.</div>
+    </div>
+  </aside>
+
+</main>
+
+<!-- Fullscreen chart modal -->
+<div id="chartModal">
+  <div class="modalCard">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:700">Grafik Error (Fullscreen)</div>
+      <div>
+        <button class="btn alt" id="closeChartModal">Tutup</button>
+      </div>
+    </div>
+    <div style="margin-top:12px"><canvas id="chartFullscreen" height="260"></canvas></div>
+  </div>
+</div>
+
+<!-- Floating action: back to top -->
+<button id="fabTop" class="circle-toggle" style="position:fixed;right:18px;bottom:18px;z-index:9">↑</button>
+
+<script>
+/* ========= Util & Init ========= */
+const splash = document.getElementById('splash');
+const splashProgress = document.getElementById('splashProgress');
+const landing = document.getElementById('landing');
+const startBtn = document.getElementById('startBtn');
+const mainNav = document.getElementById('mainNav');
+const appMain = document.getElementById('appMain');
+
+const trueVal = document.getElementById('trueVal');
+const approxVal = document.getElementById('approxVal');
+const calcBtn = document.getElementById('calcBtn');
+const clearBtn = document.getElementById('clearBtn');
+const absOut = document.getElementById('absOut');
+const relOut = document.getElementById('relOut');
+
+const downloadTxt = document.getElementById('downloadTxt');
+const exportPdf = document.getElementById('exportPdf');
+const fullChartBtn = document.getElementById('fullChartBtn');
+
+const historyList = document.getElementById('historyList');
+const clearHistory = document.getElementById('clearHistory');
+const downloadAll = document.getElementById('downloadAll');
+const restoreLast = document.getElementById('restoreLast');
+
+const themeToggle = document.getElementById('themeToggle');
+const fabTop = document.getElementById('fabTop');
+
+const chartModal = document.getElementById('chartModal');
+const closeChartModal = document.getElementById('closeChartModal');
+const chartFsCtx = document.getElementById('chartFullscreen').getContext('2d');
+
+const LS_KEY = 'ea_history_vfinal_v1';
+
+/* Play soft audio feedback (WebAudio) */
+function playTone(freq=600, length=0.12){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.value = 0.02;
+    o.connect(g); g.connect(ctx.destination);
+    o.start(0); g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + length);
+    setTimeout(()=>{ o.stop(); ctx.close(); }, (length+0.05)*1000);
+  }catch(e){}
+}
+
+/* Theme init: follow system or localStorage */
+const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+if (localStorage.getItem('ea_theme')){
+  if (localStorage.getItem('ea_theme') === 'dark') document.body.classList.add('dark');
+} else if (prefersDark){
+  document.body.classList.add('dark');
+}
+function updateThemeIcon(){ themeToggle.textContent = document.body.classList.contains('dark') ? '🌙' : '☀️'; }
+updateThemeIcon();
+themeToggle.addEventListener('click', ()=>{
+  document.body.classList.toggle('dark');
+  localStorage.setItem('ea_theme', document.body.classList.contains('dark') ? 'dark':'light');
+  updateThemeIcon();
+  playTone(750,0.08);
+});
+
+/* Splash animation (progress) */
+function runSplashThenShow(){
+  // progress bar step by step
+  setTimeout(()=> { splashProgress.style.width='30%'; }, 80);
+  setTimeout(()=> { splashProgress.style.width='62%'; }, 480);
+  setTimeout(()=> { splashProgress.style.width='88%'; }, 980);
+  setTimeout(()=> { splashProgress.style.width='100%'; }, 1400);
+
+  // finish & transition
+  setTimeout(()=>{
+    gsap.to(splash,{
+      opacity:0,
+      y:-20,
+      duration:0.6,
+      onComplete:()=>{
+        splash.style.display='none';
+        showLanding();
+      }
+    });
+  },1800);
+}
+
+function showLanding(){
+  mainNav.classList.remove('hidden'); // reveal nav
+  gsap.from('#mainNav',{y:-12,opacity:0,duration:0.6,ease:'power3.out'});
+  gsap.from('#landing',{opacity:0,y:20,duration:0.9,delay:0.05,ease:'power3.out'});
+}
+
+/* Start button -> animate landing out & show app */
+startBtn.addEventListener('click', ()=>{
+  gsap.to(landing,{opacity:0,y:-30,duration:0.6,ease:'power3.in',onComplete:()=>{
+    landing.classList.add('hidden');
+    appMain.classList.remove('hidden');
+    gsap.from('#appMain .card',{y:18,opacity:0,duration:0.8,stagger:0.12,ease:'power3.out'});
+    playTone(880,0.08);
+  }});
+});
+
+/* If user scrolls, show nav earlier */
+window.addEventListener('scroll', ()=>{
+  if (window.scrollY>40){ mainNav.classList.remove('hidden'); gsap.to('#mainNav',{y:0,opacity:1,duration:0.6}); }
+});
+
+/* ========= Chart setup ========= */
+const ctx = document.getElementById('errorChart').getContext('2d');
+const grad = ctx.createLinearGradient(0,0,0,300);
+grad.addColorStop(0,'rgba(106,128,255,0.95)');
+grad.addColorStop(1,'rgba(110,163,255,0.12)');
+
+const errorChart = new Chart(ctx, {
+  type:'bar',
+  data:{ labels:['Error Absolut','Error Relatif (%)'], datasets:[{ label:'Error', data:[0,0], backgroundColor:[grad,'rgba(72,255,190,0.9)'], borderRadius:10, barThickness:36 }]},
+  options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true}} }
+});
+
+const chartFullscreen = new Chart(chartFsCtx, {
+  type:'line',
+  data:{ labels:['Error Absolut','Error Relatif (%)'], datasets:[{ label:'Error', data:[0,0], fill:true, backgroundColor:grad, borderColor:'#6ea3ff', tension:0.35, pointRadius:6 }]},
+  options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true}} }
+});
+
+/* ========= History management ========= */
+function loadHistory(){ try{ const r = localStorage.getItem(LS_KEY); return r? JSON.parse(r):[] }catch(e){ return [] } }
+function saveHistory(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); }
+function renderHistory(){
+  const arr = loadHistory();
+  historyList.innerHTML = '';
+  if (!arr.length){ historyList.innerHTML = '<div class="tiny">Belum ada riwayat. Lakukan perhitungan untuk menyimpan hasil.</div>'; return; }
+  arr.forEach((it, idx)=>{
+    const div = document.createElement('div'); div.className='hist-item';
+    div.innerHTML = `<div>
+      <div style="font-weight:700">${it.title}</div>
+      <small class="tiny">${it.time}</small>
+    </div>
+    <div style="text-align:right">
+      <div style="font-weight:700">${it.abs}</div><small class="tiny"> abs</small>
+      <div style="font-weight:700;margin-top:6px">${it.rel}%</div><small class="tiny"> rel</small>
+    </div>`;
+    const actions = document.createElement('div'); actions.className='hist-actions';
+    const useBtn = document.createElement('button'); useBtn.className='btn alt'; useBtn.style.padding='6px'; useBtn.textContent='Pakai';
+    useBtn.onclick = ()=>{ trueVal.value = it.real; approxVal.value = it.approx; playTone(700,0.06); window.scrollTo({top:0,behavior:'smooth'}); };
+    const delBtn = document.createElement('button'); delBtn.className='btn alt'; delBtn.style.padding='6px'; delBtn.textContent='Hapus';
+    delBtn.onclick = ()=>{ const a=loadHistory(); a.splice(idx,1); saveHistory(a); renderHistory(); playTone(400,0.06); };
+    actions.appendChild(useBtn); actions.appendChild(delBtn);
+    div.appendChild(actions);
+    historyList.appendChild(div);
+  });
+}
+
+/* ========= Calculation logic ========= */
+let lastResult = null;
+function calculate(){
+  const r = parseFloat(trueVal.value); const a = parseFloat(approxVal.value);
+  if (isNaN(r) || isNaN(a)){ gsap.from([trueVal,approxVal],{x:-6,duration:0.25,repeat:1,yoyo:true}); playTone(220,0.12); return; }
+  const abs = Math.abs(r - a);
+  const rel = (Math.abs(r)===0)? 0 : (abs / Math.abs(r)) * 100;
+  const absFmt = abs.toFixed(6); const relFmt = rel.toFixed(4);
+  absOut.textContent = absFmt; relOut.textContent = relFmt + '%';
+  // chart update
+  errorChart.data.datasets[0].data = [abs, rel]; errorChart.update();
+  chartFullscreen.data.datasets[0].data = [abs, rel]; chartFullscreen.update();
+  // push history
+  const now = new Date();
+  const entry = { time: now.toLocaleString(), title: 'Perhitungan ' + now.toLocaleString(), real: r, approx: a, abs: absFmt, rel: relFmt };
+  const arr = loadHistory(); arr.unshift(entry); if (arr.length>40) arr.pop(); saveHistory(arr); renderHistory();
+  lastResult = entry;
+  gsap.from('#leftCard',{y:8,opacity:0,duration:0.45,ease:'power3.out'});
+  playTone(880,0.06);
+}
+
+/* ========= Events ========= */
+calcBtn.addEventListener('click', calculate);
+clearBtn.addEventListener('click', ()=>{ trueVal.value=''; approxVal.value=''; absOut.textContent='-'; relOut.textContent='-'; playTone(600,0.05); });
+
+clearHistory.addEventListener('click', ()=>{ if (!confirm('Hapus semua riwayat?')) return; localStorage.removeItem(LS_KEY); renderHistory(); playTone(500,0.06); });
+
+downloadTxt.addEventListener('click', ()=>{
+  if (!lastResult){ alert('Lakukan perhitungan dulu.'); return; }
+  const lines = [
+    '=== HASIL PERHITUNGAN ERROR ===',
+    'Waktu: ' + lastResult.time,
+    'Nilai Sebenarnya: ' + lastResult.real,
+    'Nilai Aproksimasi: ' + lastResult.approx,
+    'Error Absolut: ' + lastResult.abs,
+    'Error Relatif: ' + lastResult.rel + ' %'
+  ];
+  const blob = new Blob([lines.join('\\n')],{type:'text/plain'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'hasil_error.txt'; a.click(); URL.revokeObjectURL(url); playTone(720,0.06);
+});
+
+downloadAll.addEventListener('click', ()=>{
+  const arr = loadHistory(); if (!arr.length){ alert('Tidak ada riwayat.'); return; }
+  const lines = ['=== RIWAYAT PERHITUNGAN ===','']; arr.forEach((it,i)=> lines.push(`${i+1}. [${it.time}] abs=${it.abs} rel=${it.rel}% (real=${it.real}, approx=${it.approx})`));
+  const blob = new Blob([lines.join('\\n')],{type:'text/plain'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='riwayat_error.txt'; a.click(); URL.revokeObjectURL(url); playTone(700,0.06);
+});
+
+restoreLast.addEventListener('click', ()=>{
+  const arr = loadHistory(); if (!arr.length){ alert('Belum ada riwayat.'); return; }
+  const latest = arr[0]; trueVal.value = latest.real; approxVal.value = latest.approx; absOut.textContent = latest.abs; relOut.textContent = latest.rel + '%';
+  errorChart.data.datasets[0].data = [parseFloat(latest.abs), parseFloat(latest.rel)]; errorChart.update(); lastResult = latest; playTone(760,0.06);
+});
+
+/* Export PDF */
+exportPdf.addEventListener('click', async ()=>{
+  if (!lastResult){ alert('Lakukan perhitungan dulu.'); return; }
+  playTone(780,0.06);
+  const card = document.getElementById('leftCard');
+  const canvas = await html2canvas(card, {scale:2, backgroundColor: null});
+  const img = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit:'px', format:[canvas.width, canvas.height] });
+  pdf.addImage(img, 'PNG', 0, 0, canvas.width, canvas.height);
+  pdf.save('laporan_error_' + Date.now() + '.pdf');
+});
+
+/* Fullscreen chart modal */
+fullChartBtn.addEventListener('click', ()=>{ chartModal.style.display='flex'; gsap.from('#chartModal .modalCard',{scale:0.96,opacity:0,duration:0.36}); playTone(700,0.06); });
+closeChartModal.addEventListener('click', ()=>{ chartModal.style.display='none'; playTone(600,0.05); });
+
+/* FAB top */
+fabTop.addEventListener('click', ()=> window.scrollTo({top:0,behavior:'smooth'}) );
+
+/* keyboard Enter -> calculate */
+[trueVal, approxVal].forEach(inp=> inp.addEventListener('keydown', e=>{ if (e.key==='Enter'){ calculate(); e.preventDefault(); } }));
+
+/* Restore previous on load */
+(function init(){
+  renderHistory();
+  const arr = loadHistory();
+  if (arr && arr.length){
+    const latest = arr[0];
+    lastResult = latest;
+    absOut.textContent = latest.abs; relOut.textContent = latest.rel + '%';
+    errorChart.data.datasets[0].data = [parseFloat(latest.abs), parseFloat(latest.rel)];
+    errorChart.update();
+    chartFullscreen.data.datasets[0].data = [parseFloat(latest.abs), parseFloat(latest.rel)];
+    chartFullscreen.update();
+  }
+  // start splash -> show landing
+  runSplashThenShow();
+})();
+
+/* Small accessibility: show focus ring when tabbing */
+window.addEventListener('keydown', e => { if (e.key === 'Tab') document.body.classList.add('show-focus'); });
+</script>
+
+</body>
+</html>
